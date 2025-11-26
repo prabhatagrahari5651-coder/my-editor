@@ -1,0 +1,759 @@
+﻿<!DOCTYPE html>
+<!--
+  Ultimate Offline Editor - Single File
+  Save as: offline_editor.html
+  Save as type: All Files
+  Encoding: UTF-8
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Ultimate HTML, CSS AND JS Editor</title>
+<style>
+/* ---------- Theme & Layout ---------- */
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Arial,Helvetica,sans-serif}
+body{
+  display:flex;
+  height:100vh;
+  background:#0f1720;
+  color:#e6eef8;
+  overflow:hidden;
+  transition:background .2s,color .2s;
+}
+body.light{
+  background:#f2f4f8;
+  color:#10202b;
+}
+
+/* Sidebar */
+#sidebar{
+  width:180px;
+  background:#111827;
+  border-right:1px solid rgba(255,255,255,0.04);
+  display:flex;
+  flex-direction:column;
+}
+#sidebar h1{
+  font-size:16px;
+  margin:0;padding:14px 10px;
+  text-align:center;
+  background:linear-gradient(90deg, rgba(0,120,255,0.12), rgba(0,196,128,0.06));
+  border-bottom:1px solid rgba(255,255,255,0.03);
+}
+.tabBtn{
+  padding:12px 10px;
+  border:0;
+  background:transparent;
+  color:rgba(230,238,248,0.8);
+  text-align:left;
+  font-weight:600;
+  cursor:pointer;
+  border-left:4px solid transparent;
+  transition:all .12s ease;
+}
+.tabBtn:hover{background:rgba(255,255,255,0.02)}
+.tabBtn.active{
+  background:linear-gradient(90deg, rgba(0,120,255,0.06), rgba(0,196,128,0.02));
+  color:#fff;
+  border-left:4px solid #0078ff;
+}
+
+/* Main split */
+#main{flex:1;display:flex;min-width:600px}
+
+/* Editor area (left) */
+#editorArea{width:50%;display:flex;flex-direction:column;border-right:1px solid rgba(255,255,255,0.03);background:#0b1220}
+body.light #editorArea{background:#ffffff}
+
+/* Section styling */
+.section{display:none;flex-direction:column;height:100%}
+.section.active{display:flex}
+.sectionHeader{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:8px 12px;
+  background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.0));
+  border-bottom:1px solid rgba(255,255,255,0.02);
+}
+.sectionHeader .left{font-weight:700}
+.sectionHeader .controls button{
+  margin-left:8px;padding:6px 10px;border-radius:6px;border:0;font-weight:700;cursor:pointer
+}
+.runBtn{background:#0078ff;color:#fff}
+.clearBtn{background:#ff4d4f;color:#fff}
+.copyBtn{background:#00c46b;color:#002b1f}
+.basicBtn{background:#ffb020;color:#1b1200}
+
+/* Editor textareas */
+textarea.editor{
+  flex:1;padding:12px 14px;margin:10px;border-radius:8px;border:0;
+  font-family:Consolas,Monaco,monospace;font-size:13px;line-height:1.45;color:#dbeafe;
+  background:linear-gradient(180deg,#071126,#071126);
+  resize:none;outline:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.01)
+}
+body.light textarea.editor{
+  color:#021627;background:#fff;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.06)
+}
+
+/* Combined area (read-only) */
+textarea.readonly{flex:1;padding:12px 14px;margin:10px;border-radius:8px;border:0;font-family:Consolas,monospace;font-size:12px;line-height:1.4;background:rgba(0,0,0,0.45);color:#dbeafe;resize:none;outline:none}
+body.light textarea.readonly{background:#f7fafc;color:#021627}
+
+/* Output area (right) */
+#outputArea{width:50%;display:flex;flex-direction:column}
+#outputHeader{
+  display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.03);
+  background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.0))
+}
+#outputHeader .left{font-weight:800}
+#preview{flex:1;border:0;background:#fff;margin:10px;border-radius:8px;overflow:hidden}
+
+/* Bottom utility row */
+#bottomRow{
+  display:flex;gap:8px;padding:10px;border-top:1px solid rgba(255,255,255,0.02);align-items:center;background:rgba(255,255,255,0.01)
+}
+#bottomRow button{padding:8px 10px;border-radius:6px;border:0;cursor:pointer;font-weight:700}
+.saveBtn{background:#6b5cff;color:white}
+.saveAllBtn{background:#00c46b;color:#002b1f}
+.clearAllBtn{background:#ff4d4f;color:white}
+
+/* Suggestion popup (VS Code like) */
+.suggestBox{
+  position:fixed;
+  min-width:220px;
+  max-width:420px;
+  max-height:240px;
+  overflow:auto;
+  background:#061426;
+  color:#cfe9ff;
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:6px;
+  box-shadow:0 8px 30px rgba(2,6,23,0.7);
+  z-index:9999;
+  font-family:Inter,Segoe UI,Arial,monospace;
+  font-size:13px;
+}
+.suggestItem{padding:8px 10px;cursor:pointer}
+.suggestItem:hover,.suggestItem.active{background:linear-gradient(90deg,#073b6e,#063a6b);color:#fff}
+
+/* small helpers */
+.topRightControls{display:flex;gap:8px;align-items:center}
+.iconBtn{background:transparent;border:0;color:inherit;padding:6px 8px;border-radius:6px;cursor:pointer;font-weight:700}
+.note{font-size:12px;color:rgba(255,255,255,0.5);padding-left:10px}
+
+/* Light mode overrides */
+body.light .tabBtn{color:#1f2937}
+body.light .tabBtn.active{border-left-color:#0078ff}
+body.light .sectionHeader{background:linear-gradient(180deg,#fff,#fff)}
+body.light #outputHeader{background:#fff}
+body.light .suggestBox{background:#ffffff;color:#0b2430;border:1px solid rgba(0,0,0,0.08)}
+body.light .suggestItem:hover,.suggestItem.active{background:#e6f0ff;color:#00102b}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <h1>Ultimate Editor</h1>
+  <button class="tabBtn active" data-tab="html" onclick="openTab('html',this)">HTML</button>
+  <button class="tabBtn" data-tab="css" onclick="openTab('css',this)">CSS</button>
+  <button class="tabBtn" data-tab="js" onclick="openTab('js',this)">JavaScript</button>
+  <button class="tabBtn" data-tab="combined" onclick="openTab('combined',this)">All Combined</button>
+  <div style="flex:1"></div>
+  <div style="padding:10px;font-size:12px;color:rgba(255,255,255,0.6)">
+    Tips: Use arrow keys in suggestion, Enter to accept, Esc to close.
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- EDITOR AREA -->
+  <div id="editorArea">
+
+    <!-- HTML -->
+    <div class="section active" id="htmlSection" data-bg="#07132b">
+      <div class="sectionHeader">
+        <div class="left">HTML Editor</div>
+        <div class="controls">
+          <button class="iconBtn" title="Undo" onclick="undo('html')">Undo</button>
+          <button class="iconBtn" title="Redo" onclick="redo('html')">Redo</button>
+          <button class="basicBtn" onclick="insertBasicHTML()">Basic</button>
+          <button class="runBtn" onclick="runCode()">Run</button>
+          <button class="clearBtn" onclick="clearCode('html')">Clear</button>
+        </div>
+      </div>
+      <textarea id="html" class="editor" spellcheck="false" placeholder="Write HTML here..."></textarea>
+    </div>
+
+    <!-- CSS -->
+    <div class="section" id="cssSection" data-bg="#071328">
+      <div class="sectionHeader">
+        <div class="left">CSS Editor</div>
+        <div class="controls">
+          <button class="iconBtn" title="Undo" onclick="undo('css')">Undo</button>
+          <button class="iconBtn" title="Redo" onclick="redo('css')">Redo</button>
+          <button class="runBtn" onclick="runCode()">Run</button>
+          <button class="clearBtn" onclick="clearCode('css')">Clear</button>
+        </div>
+      </div>
+      <textarea id="css" class="editor" spellcheck="false" placeholder="Write CSS here..."></textarea>
+    </div>
+
+    <!-- JS -->
+    <div class="section" id="jsSection" data-bg="#07122e">
+      <div class="sectionHeader">
+        <div class="left">JavaScript Editor</div>
+        <div class="controls">
+          <button class="iconBtn" title="Undo" onclick="undo('js')">Undo</button>
+          <button class="iconBtn" title="Redo" onclick="redo('js')">Redo</button>
+          <button class="runBtn" onclick="runCode()">Run</button>
+          <button class="clearBtn" onclick="clearCode('js')">Clear</button>
+        </div>
+      </div>
+      <textarea id="js" class="editor" spellcheck="false" placeholder="Write JavaScript here..."></textarea>
+    </div>
+
+    <!-- Combined -->
+    <div class="section" id="combinedSection" data-bg="#07121a">
+      <div class="sectionHeader">
+        <div class="left">All Combined</div>
+        <div class="controls">
+          <button class="runBtn" onclick="runCode()">Run</button>
+          <button class="copyBtn" onclick="copyCombined()">Copy</button>
+        </div>
+      </div>
+      <textarea id="combined" class="readonly" readonly placeholder="Combined code will appear here after Run."></textarea>
+    </div>
+
+    <!-- bottom utilities -->
+    <div id="bottomRow">
+      <button class="saveBtn" onclick="saveFile('html')">Save HTML</button>
+      <button class="saveBtn" onclick="saveFile('css')">Save CSS</button>
+      <button class="saveBtn" onclick="saveFile('js')">Save JS</button>
+      <button class="saveAllBtn" onclick="saveAll()">Save ALL</button>
+      <div style="flex:1"></div>
+      <button class="clearAllBtn" onclick="clearAll()">Clear ALL Code</button>
+    </div>
+
+  </div>
+
+  <!-- OUTPUT AREA -->
+  <div id="outputArea">
+    <div id="outputHeader">
+      <div class="left">Live Preview</div>
+      <div class="topRightControls">
+        <button id="themeBtn" class="iconBtn" onclick="toggleTheme()">Light Mode</button>
+      </div>
+    </div>
+    <iframe id="preview" sandbox="allow-scripts allow-same-origin"></iframe>
+  </div>
+
+</div>
+
+<!-- Suggestion popup -->
+<div id="suggestBox" class="suggestBox" style="display:none"></div>
+
+<script>
+/* ----------------- Data (suggestions) ----------------- */
+const HTML_TAGS = [
+  'div','span','p','a','img','ul','ol','li','header','footer','nav','section','article',
+  'h1','h2','h3','h4','h5','h6','table','tr','td','th','tbody','thead','form','input','button',
+  'label','textarea','select','option','canvas','svg','link','meta','script','style','title'
+];
+
+const CSS_PROPS = [
+  'color','background','background-color','margin','padding','display','position','top','left','right','bottom',
+  'width','height','max-width','min-width','max-height','min-height','border','border-radius','box-shadow',
+  'font-size','font-weight','line-height','text-align','justify-content','align-items','flex','grid','gap',
+  'overflow','z-index','opacity','transition','transform','cursor'
+];
+
+const JS_KEYWORDS = [
+  'function','const','let','var','if','else','for','while','return','switch','case','break','continue',
+  'document','window','console.log','addEventListener','querySelector','querySelectorAll','setTimeout','setInterval',
+  'JSON.parse','JSON.stringify','fetch' // fetch included but offline; user will know
+];
+
+/* ----------------- Elements ----------------- */
+const html = document.getElementById('html');
+const css = document.getElementById('css');
+const js = document.getElementById('js');
+const combined = document.getElementById('combined');
+const preview = document.getElementById('preview');
+const suggestBox = document.getElementById('suggestBox');
+const themeBtn = document.getElementById('themeBtn');
+const editorArea = document.getElementById('editorArea');
+
+/* ----------------- Initial content & history ----------------- */
+const defaultHTML = `<!-- Start typing HTML. Use suggestions (Ctrl+Space or just type). -->\n<h1>Hello World</h1>\n<p>Edit the code on the left and press Run.</p>`;
+const defaultCSS = `/* Start CSS */\nbody{font-family:Arial, sans-serif;margin:16px}\nh1{color:#0078ff}`;
+const defaultJS  = `// Start JavaScript\nconsole.log('Ready');`;
+
+html.value = localStorage.getItem('uh_html') || defaultHTML;
+css.value  = localStorage.getItem('uh_css')  || defaultCSS;
+js.value   = localStorage.getItem('uh_js')   || defaultJS;
+
+/* Per-file history stacks */
+const history = {
+  html: {stack:[], idx:-1},
+  css:  {stack:[], idx:-1},
+  js:   {stack:[], idx:-1}
+};
+
+function pushHistory(type, content){
+  const h = history[type];
+  // if new content same as current, don't push
+  if(h.idx>=0 && h.stack[h.idx] === content) return;
+  // truncate any redo entries
+  if(h.idx < h.stack.length -1) h.stack = h.stack.slice(0, h.idx+1);
+  h.stack.push(content);
+  h.idx = h.stack.length -1;
+}
+
+/* initialize history with initial values */
+pushHistory('html', html.value);
+pushHistory('css', css.value);
+pushHistory('js', js.value);
+
+/* Save to localStorage on changes after small debounce */
+let saveTimer = null;
+function scheduleSave(){
+  if(saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    localStorage.setItem('uh_html', html.value);
+    localStorage.setItem('uh_css', css.value);
+    localStorage.setItem('uh_js', js.value);
+  },400);
+}
+
+/* attach input listeners to push history (debounced) */
+[html,css,js].forEach(el=>{
+  el.addEventListener('input', e=>{
+    const id = el.id;
+    pushHistory(id, el.value);
+    scheduleSave();
+    // show suggestions automatically while typing letters or '<' etc.
+    handleSuggestOnInput(el, e);
+  });
+});
+
+/* ----------------- Tab handling & active styling ----------------- */
+function openTab(tab, btn){
+  // highlight sidebar button
+  document.querySelectorAll('.tabBtn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active'); else {
+    const b = document.querySelector(`.tabBtn[data-tab="${tab}"]`);
+    if(b) b.classList.add('active');
+  }
+  // show section
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(tab + 'Section').classList.add('active');
+  // change editorArea bg to section color
+  const sec = document.getElementById(tab + 'Section');
+  const bg = sec.getAttribute('data-bg') || '#07122e';
+  editorArea.style.background = bg;
+  // when combined open, update combined
+  if(tab==='combined') updateCombined();
+}
+
+/* ----------------- Run / Combined ----------------- */
+function runCode(){
+  const htmlv = html.value;
+  const csv = css.value;
+  const jsv = js.value;
+  const code = buildFull(htmlv, csv, jsv);
+  preview.srcdoc = code;
+  combined.value = code;
+  // Store combined in localStorage optional
+  localStorage.setItem('uh_combined', code);
+}
+
+function buildFull(htmlv, cssv, jsv){
+  return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>${cssv}\n</style>
+</head>
+<body>
+${htmlv}
+<script>
+${jsv}
+<\/script>
+</body>
+</html>`;
+}
+
+function updateCombined(){
+  const code = localStorage.getItem('uh_combined') || buildFull(html.value, css.value, js.value);
+  combined.value = code;
+}
+
+/* ----------------- Clear / Clear All ----------------- */
+function clearCode(type){
+  if(!confirm(`Clear ${type.toUpperCase()} code? This action can be undone using Undo.`)) return;
+  const el = document.getElementById(type);
+  el.value = '';
+  pushHistory(type, el.value);
+  scheduleSave();
+}
+
+function clearAll(){
+  if(!confirm('Clear ALL code (HTML, CSS, JS)? This cannot be undone except via Undo per-file.)')) return;
+  html.value=''; css.value=''; js.value='';
+  pushHistory('html', html.value);
+  pushHistory('css', css.value);
+  pushHistory('js', js.value);
+  scheduleSave();
+  runCode();
+}
+
+/* ----------------- Undo / Redo per file ----------------- */
+function undo(type){
+  const h = history[type];
+  if(h.idx > 0){
+    h.idx--;
+    const val = h.stack[h.idx];
+    document.getElementById(type).value = val;
+    scheduleSave();
+  } else {
+    alert('Nothing to undo');
+  }
+}
+function redo(type){
+  const h = history[type];
+  if(h.idx < h.stack.length -1){
+    h.idx++;
+    const val = h.stack[h.idx];
+    document.getElementById(type).value = val;
+    scheduleSave();
+  } else {
+    alert('Nothing to redo');
+  }
+}
+
+/* ----------------- Basic HTML insert ----------------- */
+function insertBasicHTML(){
+  const basic =
+`<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Document</title>
+</head>
+<body>
+
+<h1>Hello World</h1>
+
+</body>
+</html>`;
+  html.value = basic;
+  pushHistory('html', html.value);
+  scheduleSave();
+  runCode();
+}
+
+/* ----------------- Save files (download) ----------------- */
+function saveFile(type){
+  let content = '';
+  let filename = '';
+  if(type==='html'){ content = html.value; filename='index.html'; }
+  else if(type==='css'){ content = css.value; filename='styles.css'; }
+  else if(type==='js'){ content = js.value; filename='script.js'; }
+  else return;
+  const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  a.remove(); URL.revokeObjectURL(url);
+}
+function saveAll(){
+  // Trigger three downloads sequentially
+  saveFile('html'); setTimeout(()=>saveFile('css'),250); setTimeout(()=>saveFile('js'),500);
+}
+
+/* ----------------- Copy Combined ----------------- */
+function copyCombined(){
+  if(!combined.value){
+    alert('Run first to generate combined code.');
+    return;
+  }
+  combined.select();
+  document.execCommand('copy');
+  alert('Combined code copied to clipboard.');
+}
+
+/* ----------------- Theme toggle ----------------- */
+function toggleTheme(){
+  document.body.classList.toggle('light');
+  themeBtn.textContent = document.body.classList.contains('light') ? 'Dark Mode' : 'Light Mode';
+}
+
+/* ----------------- Suggestion System ----------------- */
+/*
+  Behavior:
+  - Listen to key events in each editor textarea.
+  - When user types letters, '<' or '.' or ':' (for CSS), show suggestions.
+  - Use a simple caret-position approximation to position the suggestion box.
+  - Arrow keys to navigate, Enter to accept, Esc to close.
+*/
+
+let activeEditor = html; // default
+[html,css,js].forEach(el=>{
+  el.addEventListener('focus', ()=> activeEditor = el);
+  el.addEventListener('keydown', handleKeydown);
+  el.addEventListener('input', ()=>{}); // handled earlier
+});
+
+/* Helper: get current word fragment before cursor */
+function getFragment(textarea){
+  const pos = textarea.selectionStart;
+  const txt = textarea.value.substring(0,pos);
+  // choose fragment depending on language
+  if(textarea === html){
+    // if last char is '<' start new fragment
+    const lt = txt.lastIndexOf('<');
+    if(lt === -1) return '';
+    const frag = txt.substring(lt+1);
+    // stop at whitespace or >
+    if(frag.indexOf('>')>=0) return '';
+    return frag;
+  } else if(textarea === css){
+    // find last non-word (space, newline, ;, { ) position
+    const match = txt.match(/([a-zA-Z\-]*)$/);
+    return match ? match[0] : '';
+  } else {
+    // js: match last word characters
+    const match = txt.match(/([a-zA-Z0-9\._]*)$/);
+    return match ? match[0] : '';
+  }
+}
+
+/* Determine suggestions list */
+function getSuggestions(editor, fragment){
+  const f = fragment.toLowerCase();
+  if(editor === html){
+    if(!f) return [];
+    return HTML_TAGS.filter(t=>t.startsWith(f)).slice(0,12);
+  } else if(editor === css){
+    if(!f) return [];
+    return CSS_PROPS.filter(p=>p.startsWith(f)).slice(0,12);
+  } else {
+    if(!f) return [];
+    return JS_KEYWORDS.filter(k=>k.startsWith(f)).slice(0,12);
+  }
+}
+
+/* Position suggestion box roughly near caret */
+function positionSuggestBox(textarea){
+  try{
+    const rect = textarea.getBoundingClientRect();
+    // compute line height approx
+    const style = window.getComputedStyle(textarea);
+    const lineHeight = parseInt(style.lineHeight) || 18;
+    // compute caret position approx by number of line breaks before caret
+    const before = textarea.value.substring(0, textarea.selectionStart);
+    const lines = before.split('\n');
+    const caretLine = lines.length - 1;
+    const caretCol = lines[lines.length-1].length;
+    const top = rect.top + 40 + caretLine * lineHeight - textarea.scrollTop;
+    const left = rect.left + 8 + Math.min(caretCol * 7, rect.width - 50);
+    suggestBox.style.top = (top + window.scrollY) + 'px';
+    suggestBox.style.left = (left + window.scrollX) + 'px';
+  }catch(e){
+    // fallback center
+    suggestBox.style.top = '120px'; suggestBox.style.left = '120px';
+  }
+}
+
+/* Render suggestions */
+let currentSuggestions = [], currentIndex = -1;
+function showSuggestions(editor){
+  const frag = getFragment(editor);
+  const list = getSuggestions(editor, frag);
+  currentSuggestions = list;
+  currentIndex = -1;
+  if(!list || list.length===0){
+    suggestBox.style.display = 'none';
+    return;
+  }
+  let htmlOut = '';
+  list.forEach((item,i)=>{
+    htmlOut += `<div class="suggestItem" data-idx="${i}">${item}</div>`;
+  });
+  suggestBox.innerHTML = htmlOut;
+  suggestBox.style.display = 'block';
+  positionSuggestBox(editor);
+  // attach mouse events
+  Array.from(suggestBox.querySelectorAll('.suggestItem')).forEach(el=>{
+    el.addEventListener('mousemove', ()=> {
+      suggestBox.querySelectorAll('.suggestItem').forEach(x=>x.classList.remove('active'));
+      el.classList.add('active');
+      currentIndex = parseInt(el.dataset.idx,10);
+    });
+    el.addEventListener('mousedown', (ev)=> {
+      ev.preventDefault();
+      acceptSuggestion(editor, parseInt(el.dataset.idx,10));
+    });
+  });
+}
+
+/* Hide */
+function hideSuggestions(){ suggestBox.style.display='none'; currentSuggestions=[]; currentIndex=-1; }
+
+/* Accept suggestion: insert appropriately */
+function acceptSuggestion(editor, idx){
+  if(!currentSuggestions || idx<0 || idx>=currentSuggestions.length) return;
+  const item = currentSuggestions[idx];
+  const pos = editor.selectionStart;
+  const before = editor.value.substring(0,pos);
+  const after  = editor.value.substring(pos);
+  if(editor === html){
+    // find last '<' position
+    const lt = before.lastIndexOf('<');
+    const pre = before.substring(0,lt+1); // include '<'
+    // insert tag and closing tag, move caret inside
+    const insert = `${item}></${item}>`;
+    editor.value = pre + insert + after;
+    // set caret between '>' and '</'
+    const newPos = (pre + item).length + 1; // after opening tag '>'
+    const caret = pre.length + item.length + 1; // position after '>'
+    // place caret after '>'
+    const inside = pre.length + item.length + 1;
+    editor.selectionStart = editor.selectionEnd = inside;
+    editor.focus();
+  } else if(editor === css){
+    // replace fragment at end
+    const frag = getFragment(editor);
+    const start = editor.selectionStart - frag.length;
+    const pre = editor.value.substring(0,start);
+    const post = editor.value.substring(editor.selectionStart);
+    const insert = item + ': ;';
+    editor.value = pre + insert + post;
+    // place caret between colon and semicolon
+    const caret = start + item.length + 2;
+    editor.selectionStart = editor.selectionEnd = caret;
+    editor.focus();
+  } else {
+    // js: simple replace fragment with keyword + space or with function stub for function keyword
+    const frag = getFragment(editor);
+    const start = editor.selectionStart - frag.length;
+    const pre = editor.value.substring(0,start);
+    const post = editor.value.substring(editor.selectionStart);
+    let insert = item;
+    if(item==='function') insert = 'function name() {\n  \n}';
+    else if(item.includes('(') && item.includes(')')) insert = item + ' ';
+    else insert = item + ' ';
+    editor.value = pre + insert + post;
+    // set caret appropriately
+    const caret = pre.length + insert.length;
+    editor.selectionStart = editor.selectionEnd = caret;
+    editor.focus();
+  }
+  hideSuggestions();
+  // update history & save
+  pushHistory(editor.id, editor.value);
+  scheduleSave();
+}
+
+/* Handle keys for suggestion navigation */
+function handleKeydown(e){
+  // Ctrl+Space to trigger suggestions manually
+  if((e.ctrlKey || e.metaKey) && e.key === ' ') {
+    e.preventDefault();
+    showSuggestions(this);
+    return;
+  }
+  // When suggestBox visible handle navigation
+  if(suggestBox.style.display === 'block'){
+    if(e.key === 'ArrowDown'){ e.preventDefault(); currentIndex = Math.min(currentIndex+1, currentSuggestions.length-1); updateSuggestActive(); return; }
+    if(e.key === 'ArrowUp'){ e.preventDefault(); currentIndex = Math.max(currentIndex-1, 0); updateSuggestActive(); return; }
+    if(e.key === 'Enter'){ e.preventDefault(); if(currentIndex===-1) currentIndex=0; acceptSuggestion(this, currentIndex); return; }
+    if(e.key === 'Escape'){ e.preventDefault(); hideSuggestions(); return; }
+  }
+  // For HTML: when user types '<' show suggestions
+  if(this === html && e.key === '<'){
+    // let input event handle value, then show after small timeout
+    setTimeout(()=> showSuggestions(this),20);
+    return;
+  }
+  // For CSS: '.' or letter triggers suggestions (we handle in input)
+}
+
+/* handleSuggestOnInput: called on input event */
+function handleSuggestOnInput(editor,event){
+  const frag = getFragment(editor);
+  // heuristics: show when length>=1 and not too long
+  if(frag && frag.length <= 30){
+    const sug = getSuggestions(editor, frag);
+    if(sug.length>0) showSuggestions(editor);
+    else hideSuggestions();
+  } else {
+    hideSuggestions();
+  }
+}
+
+/* update active class in suggestBox */
+function updateSuggestActive(){
+  const items = suggestBox.querySelectorAll('.suggestItem');
+  items.forEach(it=>it.classList.remove('active'));
+  if(currentIndex>=0 && items[currentIndex]) items[currentIndex].classList.add('active');
+  // ensure visible
+  const activeEl = suggestBox.querySelector('.suggestItem.active');
+  if(activeEl) activeEl.scrollIntoView({block:'nearest'});
+}
+
+/* click outside to hide suggestions */
+document.addEventListener('click', (e)=>{
+  if(!suggestBox.contains(e.target) && !(['HTML','CSS','JS'].includes(e.target.tagName))) hideSuggestions();
+});
+
+/* ----------------- initialize run/preview ----------------- */
+runCode();
+
+/* ----------------- Save on unload ----------------- */
+window.addEventListener('beforeunload', ()=>{
+  localStorage.setItem('uh_html', html.value);
+  localStorage.setItem('uh_css', css.value);
+  localStorage.setItem('uh_js', js.value);
+});
+
+/* ----------------- expose some functions for buttons referenced inline ----------------- */
+/* They are already declared above, but ensure global scope */
+window.openTab = openTab;
+window.runCode = runCode;
+window.clearCode = clearCode;
+window.clearAll = clearAll;
+window.undo = undo;
+window.redo = redo;
+window.insertBasicHTML = insertBasicHTML;
+window.saveFile = saveFile;
+window.saveAll = saveAll;
+window.copyCombined = copyCombined;
+window.saveAll = saveAll;
+window.saveFile = saveFile;
+window.saveAll = saveAll;
+window.toggleTheme = toggleTheme;
+window.clearAll = clearAll;
+window.copyCombined = copyCombined;
+
+/* Small keyboard shortcuts for convenience */
+document.addEventListener('keydown', (e)=>{
+  if((e.ctrlKey || e.metaKey) && e.key === 's'){ e.preventDefault(); saveFile('html'); return; } // Ctrl+S saves HTML
+  if((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 's'){ e.preventDefault(); saveAll(); return;} // Ctrl+Shift+S save all
+  if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){ e.preventDefault(); runCode(); return; } // Ctrl+Enter run
+  if(e.key === 'F1'){ e.preventDefault(); alert('Tips:\\n- Use arrow keys in suggestion, Enter to accept.\\n- Ctrl+Space to open suggestions.\\n- Ctrl+Enter to Run.'); }
+});
+
+/* Resize suggestion box on window resize to reposition */
+window.addEventListener('resize', ()=>{ if(suggestBox.style.display==='block') positionSuggestBox(activeEditor); });
+
+</script>
+</body>
+</html>
